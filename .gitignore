@@ -1,0 +1,16 @@
+# Environments
+.env
+
+# SQLite
+*.sqlite3
+db.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+
+# Docker
+.dockerignore
