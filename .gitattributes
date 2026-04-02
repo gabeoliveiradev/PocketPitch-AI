@@ -1,0 +1,32 @@
+# Forçar que arquivos de texto usem LF (Unix) nas quebras de linha ao dar checkout/commit
+# Isso evita o comum erro de "\r" ou "bad interpreter: No such file or directory" no Docker
+* text=auto eol=lf
+
+# Scripts bash e arquivos do Docker PRECISAM do LF obrigatoriamente
+*.sh text eol=lf
+Dockerfile* text eol=lf
+.dockerignore text eol=lf
+
+# Scripts específicos de Windows (se houver) mantêm CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Código-fonte geral normalizado como LF
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# Declarar que certos arquivos são sempre binários e o git não deve tocar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.sqlite3 binary

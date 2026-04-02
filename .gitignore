@@ -1,5 +1,8 @@
 # Environments
 .env
+.env.local
+.env.development
+.env.test
 
 # SQLite
 *.sqlite3
