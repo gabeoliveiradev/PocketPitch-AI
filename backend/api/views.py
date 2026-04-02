@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-import google.generativeai as genai
 import os
+from google import genai
 from .models import Conversation, Message
 
 class ChatCompletionView(APIView):
@@ -19,14 +19,16 @@ class ChatCompletionView(APIView):
             return Response({"content": "Mock IA: " + user_message[::-1] + " (Chave Gemini não configurada)"})
 
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            client = genai.Client(api_key=api_key)
             
             # Simple context engineering for MVP
             system_prompt = "Você é um assistente especialista para vendedores chamado PocketPitch AI. Seja prático, rápido e focado em vendas."
             full_prompt = f"{system_prompt}\n\nVendedor: {user_message}\nIA:"
             
-            response = model.generate_content(full_prompt)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=full_prompt,
+            )
             
             # TODO: save to DB (Conversation / Message models)
             

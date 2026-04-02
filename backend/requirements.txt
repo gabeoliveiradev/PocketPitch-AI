@@ -1,6 +1,6 @@
 Django>=4.2,<5.0
 djangorestframework
 psycopg2-binary
-google-generativeai
+google-genai
 django-cors-headers
 python-dotenv
