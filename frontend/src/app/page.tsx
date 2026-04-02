@@ -45,23 +45,46 @@ export default function Home() {
     setIsTyping(true);
 
     try {
-      // TODO: Replace with real API call pointing to Django endpoint
-      console.log('Sending to Django API via Docker...');
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/`, { ... })
+      console.log('Enviando requisição para a API Django...');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       
-      // MOCK WAITING TIME
-      setTimeout(() => {
-        const aiMsg: Message = { 
-          id: (Date.now() + 1).toString(), 
-          role: 'ai', 
-          content: 'Entendido! Aqui está um retorno baseado na sua solicitação. (Mock de Resposta da API)' 
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setIsTyping(false);
-      }, 1500);
+      const response = await fetch(`${apiUrl}/api/chat/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: text }),
+      });
 
+      if (!response.ok) {
+        let errorMsg = `Erro HTTP: ${response.status}`;
+        try {
+            const errorData = await response.json();
+            if (errorData.error) errorMsg += ` - ${errorData.error}`;
+        } catch (e) {
+            // Ignorar erro de parse se não for json
+        }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      
+      const aiMsg: Message = { 
+        id: (Date.now() + 1).toString(), 
+        role: 'ai', 
+        content: data.content || 'A resposta da IA não retornou conteúdo válido.'
+      };
+      
+      setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
-      console.error(error);
+      console.error('Falha na comunicação com a API:', error);
+      const errorMsg: Message = { 
+        id: (Date.now() + 1).toString(), 
+        role: 'ai', 
+        content: 'Houve um problema de conexão com os nossos servidores. Por favor, tente novamente.' 
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
     }
   };
@@ -71,7 +94,7 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.logo}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
           </svg>
           PocketPitch AI
         </div>
@@ -96,8 +119,8 @@ export default function Home() {
       <footer className={styles.inputContainer}>
         <div className={styles.quickActions}>
           {QUICK_ACTIONS.map(action => (
-            <button 
-              key={action} 
+            <button
+              key={action}
               className={styles.actionButton}
               onClick={() => handleSend(action)}
             >
@@ -105,23 +128,23 @@ export default function Home() {
             </button>
           ))}
         </div>
-        
-        <form 
-          className={styles.inputRow} 
+
+        <form
+          className={styles.inputRow}
           onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
         >
-          <input 
-            type="text" 
-            className={styles.inputField} 
-            placeholder="Digite algo ou use uma ação..." 
+          <input
+            type="text"
+            className={styles.inputField}
+            placeholder="Digite algo ou use uma ação..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isTyping}
           />
           <button type="submit" className={styles.sendButton} disabled={!input.trim() || isTyping}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
           </button>
         </form>
