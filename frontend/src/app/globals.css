@@ -1,17 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --primary: #5b21b6; /* deep violet */
-  --primary-glow: rgba(91, 33, 182, 0.4);
-  --secondary: #8b5cf6;
-  --bg-dark: #0f172a;
-  --bg-panel: #1e293b;
-  --bg-user-bubble: #3b82f6;
-  --bg-ai-bubble: #334155;
+  --bg-dark: #09090b; /* Very deep zinc */
+  --bg-panel: #18181b; /* Slightly lighter zinc for cards */
+  --bg-user-bubble: linear-gradient(135deg, #6366f1, #a855f7); /* Vibrant violet/purple gradient */
+  --bg-ai-bubble: rgba(255, 255, 255, 0.05); /* Frost glass style */
+  --primary: #8b5cf6;
+  --primary-glow: rgba(139, 92, 246, 0.4);
+  --secondary: #d946ef;
+  --accent: #2dd4bf;
   --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border: #334155;
-  --accent: #22d3ee;
+  --text-muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.1);
   --font-family: 'Inter', sans-serif;
 }
 
