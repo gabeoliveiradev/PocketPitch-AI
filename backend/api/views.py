@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import generics, status
 from django.conf import settings
+from django.http import StreamingHttpResponse
+import json
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
 from google import genai
@@ -21,10 +23,12 @@ def get_tokens_for_user(user):
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
+    authentication_classes = ()
     serializer_class = RegisterSerializer
 
 class LoginView(APIView):
     permission_classes = (AllowAny,)
+    authentication_classes = ()
 
     def post(self, request):
         username = request.data.get('username')
@@ -79,7 +83,7 @@ class ConversationListView(generics.ListAPIView):
     def get_queryset(self):
         return Conversation.objects.filter(user=self.request.user).order_by('-updated_at')
 
-class ConversationDetailView(generics.RetrieveAPIView):
+class ConversationDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = ConversationSerializer
 
@@ -104,30 +108,41 @@ class ChatCompletionView(APIView):
             except Conversation.DoesNotExist:
                 return Response({"error": "Conversation not found"}, status=404)
         else:
-            conversation = Conversation.objects.create(user=request.user)
+            title = user_message[:60] if user_message else 'Nova Conversa'
+            conversation = Conversation.objects.create(user=request.user, title=title)
             
         # Save user message
         Message.objects.create(conversation=conversation, role='user', content=user_message)
 
         try:
             client = genai.Client(api_key=api_key)
-            
             system_prompt = "Você é um assistente especialista para vendedores chamado PocketPitch AI. Seja prático, rápido e focado em vendas."
-            
-            # Fetch conversation history for context (optional logic, but basic MVP is just appending)
-            # For simplicity, we just send the system prompt + user message
             full_prompt = f"{system_prompt}\n\nVendedor: {user_message}\nIA:"
             
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=full_prompt,
-            )
+            # Start generator logic for SSE
+            def event_stream():
+                try:
+                    response = client.models.generate_content_stream(
+                        model='gemini-2.5-flash',
+                        contents=full_prompt,
+                    )
+                    full_ai_content = ""
+                    for chunk in response:
+                        if chunk.text:
+                            full_ai_content += chunk.text
+                            # Format line as SSE data
+                            yield f"data: {json.dumps({'content': chunk.text})}\n\n"
+                    
+                    # Save AI message when done
+                    Message.objects.create(conversation=conversation, role='ai', content=full_ai_content)
+                    
+                    # Final event
+                    yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id})}\n\n"
+                except Exception as stream_err:
+                    yield f"data: {json.dumps({'error': str(stream_err)})}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id})}\n\n"
+
+            return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
             
-            ai_content = response.text
-            
-            # Save AI message
-            Message.objects.create(conversation=conversation, role='ai', content=ai_content)
-            
-            return Response({"content": ai_content, "conversation_id": conversation.id})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
