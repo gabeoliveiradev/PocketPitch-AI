@@ -30,4 +30,4 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ('id', 'created_at', 'messages')
+        fields = ('id', 'title', 'created_at', 'messages')
