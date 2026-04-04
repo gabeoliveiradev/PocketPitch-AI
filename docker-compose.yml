@@ -27,6 +27,7 @@ services:
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
       - DEBUG=${DEBUG}
 
   frontend:
