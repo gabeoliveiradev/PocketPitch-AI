@@ -140,29 +140,220 @@
   font-weight: 600;
 }
 
-.historyItem {
+/* OPTIONS AND RENAME */
+.historyItemContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.historyItemContainer:hover {
+  background-color: var(--bg-ai-bubble);
+}
+
+.historyItemContainerActive {
+  background-color: var(--bg-ai-bubble);
+}
+
+.historyItemContainerActive .historyTitleText {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.historyItemBtn {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  width: 100%;
   padding: 0.8rem;
-  border-radius: 10px;
   color: var(--text-muted);
   text-align: left;
-  transition: all 0.2s;
-  margin-bottom: 0.25rem;
   font-size: 0.9rem;
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.historyItem:hover {
-  background-color: var(--bg-ai-bubble);
+.historyItemContainer:hover .historyItemBtn {
   color: var(--text-main);
 }
 
-.historyItemActive {
-  background-color: var(--bg-ai-bubble);
-  color: var(--primary);
+.historyTitleText {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.renameInput {
+  flex: 1;
+  background: var(--bg-dark);
+  border: 1px solid var(--primary);
+  color: var(--text-main);
+  padding: 2px 4px;
+  border-radius: 4px;
+  outline: none;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.optionsWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-right: 0.5rem;
+}
+
+.optionsBtn {
+  padding: 0.4rem;
+  color: var(--text-muted);
+  border-radius: 8px;
+  opacity: 1; /* Always visible on mobile */
+  transition: opacity 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.optionsBtn:hover {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+.optionsMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.optionsMenu button {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.optionsMenu button:hover {
+  background: var(--bg-ai-bubble);
+}
+
+.deleteOption {
+  color: #ef4444 !important;
+}
+
+.deleteOption:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* MODAL */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInOverlay 0.2s ease;
+}
+
+.modalContent {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  text-align: center;
+  animation: cardEntry 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modalIconWarning {
+  width: 60px;
+  height: 60px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem auto;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
   font-weight: 600;
+}
+
+.modalText {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 1rem;
+}
+
+.modalCancelBtn {
+  flex: 1;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-weight: 500;
+  transition: background 0.2s;
+  border: 1px solid var(--border);
+}
+
+.modalCancelBtn:hover {
+  background: var(--bg-ai-bubble);
+}
+
+.modalDeleteBtn {
+  flex: 1;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: #ef4444;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s;
+  border: none;
+}
+
+.modalDeleteBtn:active {
+  transform: scale(0.96);
+}
+
+.modalDeleteBtn:hover {
+  background: #dc2626;
 }
 
 .sidebarFooter {
@@ -234,6 +425,9 @@
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   word-wrap: break-word;
   position: relative;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 @keyframes fadeIn {
@@ -330,10 +524,10 @@
 .inputRow {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
+  align-items: flex-end; /* Align bottom to keep send button down when it grows */
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 2rem;
+  border-radius: 1.5rem; /* Slight square-ish look compared to 2rem */
   padding: 0.4rem 0.4rem 0.4rem 1.25rem;
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
   transition: border-color 0.3s, box-shadow 0.3s;
@@ -349,9 +543,23 @@
   background: transparent;
   border: none;
   color: var(--text-main);
-  padding: 0.5rem 0;
+  padding: 0.6rem 0; /* Adjusted padding to roughly center single line with send button */
   outline: none;
   font-size: 1rem;
+  resize: none; /* Prevent manual drag */
+  max-height: 200px; /* Don't grow forever */
+  min-height: 24px;
+  overflow-y: auto;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.inputField::-webkit-scrollbar {
+  width: 4px;
+}
+.inputField::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }
 
 .inputField::placeholder {
@@ -532,5 +740,15 @@
   .actionButton:hover {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-main);
+  }
+
+  /* Desktop hover behavior for options button */
+  .optionsBtn {
+    opacity: 0; /* Hidden by default on desktop */
+  }
+
+  .historyItemContainer:hover .optionsBtn, 
+  .optionsBtn:focus {
+    opacity: 1; /* Visible on hover */
   }
 }

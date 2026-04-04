@@ -11,6 +11,7 @@ interface Message {
 
 interface Conversation {
   id: number;
+  title?: string;
   created_at: string;
   messages?: Message[];
 }
@@ -28,7 +29,36 @@ const QUICK_ACTIONS = [
   "Resumo do Cliente"
 ];
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Dynamically resolve API URL so it works from any device on the network (phone via IP, PC via localhost)
+const API_URL = typeof window !== 'undefined'
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+
+const renderMessageContent = (content: string) => {
+  const paragraphs = content.split('\n');
+  return paragraphs.map((p, pIndex) => {
+    if (!p.trim()) return <br key={pIndex} />;
+    
+    const boldParts = p.split(/\*\*(.*?)\*\*/g);
+    return (
+      <div key={pIndex} style={{ marginBottom: '0.4rem' }}>
+        {boldParts.map((part, i) => {
+          if (i % 2 === 1) {
+            return <strong key={i} style={{ fontWeight: 600 }}>{part}</strong>;
+          }
+          if (part) {
+            const italicParts = part.split(/\*(.*?)\*/g);
+            return italicParts.map((ip, j) => {
+               if (j % 2 === 1) return <em key={j}>{ip}</em>;
+               return <span key={j}>{ip}</span>;
+            });
+          }
+          return null;
+        })}
+      </div>
+    );
+  });
+};
 
 export default function Home() {
   // Auth State
@@ -43,16 +73,35 @@ export default function Home() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<number | null>(null);
 
+  // Options Menu & Modal State
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renamingTitle, setRenamingTitle] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [convToDelete, setConvToDelete] = useState<number | null>(null);
+
   // Chat State
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Initial check for auth
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Close options menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (openMenuId !== null) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -164,6 +213,49 @@ export default function Home() {
     setIsSidebarOpen(false);
   };
 
+  const confirmDelete = async () => {
+    if (convToDelete === null) return;
+    try {
+      const res = await fetch(`${API_URL}/api/conversations/${convToDelete}/`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok || res.status === 204) {
+        setConversations(prev => prev.filter(c => c.id !== convToDelete));
+        if (currentConvId === convToDelete) {
+          startNewChat();
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDeleteModalOpen(false);
+      setConvToDelete(null);
+    }
+  };
+
+  const handleRenameSubmit = async (id: number) => {
+    if (!renamingTitle.trim()) {
+      setRenamingId(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/conversations/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: renamingTitle }),
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setConversations(prev => prev.map(c => c.id === id ? { ...c, title: renamingTitle } : c));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRenamingId(null);
+    }
+  };
+
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
 
@@ -196,29 +288,81 @@ export default function Home() {
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
+      if (!response.body) throw new Error("Sem acesso à stream de resposta.");
       
-      const aiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
-        role: 'ai', 
-        content: data.content || 'A resposta da IA não retornou conteúdo válido.'
-      };
+      // Initialize an empty AI message to hold the stream
+      const aiMsgId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: '' }]);
+      setIsTyping(false); // Typing indicator will stop since the text will type itself
       
-      if (!currentConvId && data.conversation_id) {
-          setCurrentConvId(data.conversation_id);
-          // Refresh conversation list to show the new one
-          loadConversations();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let doneReading = false;
+      let finalConvId = null;
+
+      let partialBuffer = "";
+
+      while (!doneReading) {
+        const { value, done } = await reader.read();
+        doneReading = done;
+        
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          partialBuffer += chunk;
+          
+          const lines = partialBuffer.split('\n\n');
+          // Important: Keep the last partial string if not empty in buffer
+          partialBuffer = lines.pop() || "";
+          
+          for (const line of lines) {
+            if (line.trim() === '') continue;
+            
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                
+                if (data.error) throw new Error(data.error);
+                
+                if (data.content) {
+                  // Artificial delay to simulate human/AI typing speed more closely to Gemini
+                  const charsPerTick = 2; // Inject 2 characters at a time
+                  for (let i = 0; i < data.content.length; i += charsPerTick) {
+                    const charSlice = data.content.substring(i, i + charsPerTick);
+                    setMessages(prev => prev.map(m => 
+                      m.id === aiMsgId ? { ...m, content: m.content + charSlice } : m
+                    ));
+                    // 15ms delay = 133 chars per second approx, smoothing out the fast server responses
+                    await new Promise(resolve => setTimeout(resolve, 15));
+                  }
+                }
+                
+                if (data.done) finalConvId = data.conversation_id;
+              } catch (e: any) {
+                // Ignore parsing errors for small malformed chunks if any
+                if (e.message !== "Unexpected end of JSON input") {
+                    console.error("Parse error:", e);
+                }
+              }
+            }
+          }
+        }
       }
 
-      setMessages(prev => [...prev, aiMsg]);
+      if (!currentConvId && finalConvId) {
+          setCurrentConvId(finalConvId);
+          loadConversations();
+      }
+      
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
     } catch (error: any) {
       console.error('Falha na comunicação com a API:', error);
-      const errorMsg: Message = { 
+      setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(), 
         role: 'ai', 
         content: error.message || 'Houve um problema de conexão com os nossos servidores. Por favor, tente novamente.' 
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      }]);
     } finally {
       setIsTyping(false);
     }
@@ -276,6 +420,26 @@ export default function Home() {
 
   return (
     <div className={styles.appWrapper}>
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsDeleteModalOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalIconWarning}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <h3 className={styles.modalTitle}>Excluir Conversa</h3>
+            <p className={styles.modalText}>Tem certeza que deseja excluir esta conversa? Esta ação não poderá ser desfeita.</p>
+            <div className={styles.modalActions}>
+              <button className={styles.modalCancelBtn} onClick={() => setIsDeleteModalOpen(false)}>Cancelar</button>
+              <button className={styles.modalDeleteBtn} onClick={confirmDelete}>Sim, excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Sidebar Overlay */}
       {isSidebarOpen && <div className={styles.sidebarOverlay} onClick={() => setIsSidebarOpen(false)} />}
       
@@ -293,16 +457,75 @@ export default function Home() {
         <div className={styles.historyList}>
           <h3 className={styles.historyTitle}>Recentes</h3>
           {conversations.map(conv => (
-            <button 
-                key={conv.id} 
-                className={`${styles.historyItem} ${currentConvId === conv.id ? styles.historyItemActive : ''}`}
-                onClick={() => loadConversationDetails(conv.id)}
-            >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                Conversa #{conv.id}
-            </button>
+            <div key={conv.id} className={`${styles.historyItemContainer} ${currentConvId === conv.id ? styles.historyItemContainerActive : ''}`}>
+              <button 
+                  className={styles.historyItemBtn}
+                  onClick={() => loadConversationDetails(conv.id)}
+              >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  {renamingId === conv.id ? (
+                      <input 
+                        type="text" 
+                        value={renamingTitle}
+                        onChange={(e) => setRenamingTitle(e.target.value)}
+                        onBlur={() => handleRenameSubmit(conv.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameSubmit(conv.id);
+                          if (e.key === 'Escape') setRenamingId(null);
+                        }}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                        className={styles.renameInput}
+                      />
+                  ) : (
+                      <span className={styles.historyTitleText}>{conv.title || `Conversa #${conv.id}`}</span>
+                  )}
+              </button>
+
+              <div className={styles.optionsWrapper}>
+                <button 
+                  className={styles.optionsBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuId(openMenuId === conv.id ? null : conv.id);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="1"/>
+                    <circle cx="12" cy="5" r="1"/>
+                    <circle cx="12" cy="19" r="1"/>
+                  </svg>
+                </button>
+
+                {openMenuId === conv.id && (
+                  <div className={styles.optionsMenu}>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenamingId(conv.id);
+                        setRenamingTitle(conv.title || `Conversa #${conv.id}`);
+                        setOpenMenuId(null);
+                      }}
+                    >
+                      Renomear
+                    </button>
+                    <button 
+                      className={styles.deleteOption}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConvToDelete(conv.id);
+                        setIsDeleteModalOpen(true);
+                        setOpenMenuId(null);
+                      }}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
         </div>
 
@@ -340,7 +563,7 @@ export default function Home() {
         <main className={styles.chatArea}>
           {messages.map((msg, index) => (
             <div key={msg.id || index} className={`${styles.message} ${msg.role === 'user' ? styles.messageUser : styles.messageAi}`}>
-              {msg.content}
+              {renderMessageContent(msg.content)}
             </div>
           ))}
           {isTyping && (
@@ -370,13 +593,30 @@ export default function Home() {
             className={styles.inputRow}
             onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
           >
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
               className={styles.inputField}
               placeholder="Digite algo ou use uma ação..."
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && !isTyping) {
+                    handleSend(input);
+                    setInput('');
+                    if (textareaRef.current) {
+                      textareaRef.current.style.height = 'auto';
+                    }
+                  }
+                }
+              }}
               disabled={isTyping}
+              rows={1}
             />
             <button type="submit" className={styles.sendButton} disabled={!input.trim() || isTyping}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
