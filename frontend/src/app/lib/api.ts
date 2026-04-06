@@ -1,9 +1,10 @@
-// Dynamically resolve API URL so it works from any device on the network
-// (phone via IP, PC via localhost)
+// In production, NEXT_PUBLIC_API_URL must point to the Render backend.
+// In local dev, fallback to same hostname on port 8000 (works with LAN/mobile).
 export const API_URL =
-  typeof window !== 'undefined'
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined'
     ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    : 'http://localhost:8000');
 
 export const QUICK_ACTIONS = [
   'Criar Pitch 30s',
