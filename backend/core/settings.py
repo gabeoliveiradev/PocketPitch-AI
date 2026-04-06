@@ -43,11 +43,18 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS configuration for cross-domain (Vercel frontend -> Render backend)
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000'
+).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
-# Also dynamically allow origins if needed via env
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
+# CSRF trusted origins (must include the Vercel frontend URL)
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:3000'
+).split(',')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -61,10 +68,10 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_SECURE': not DEBUG,  # True in prod
+    'AUTH_COOKIE_SECURE': True,  # Required for SameSite=None
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_SAMESITE': 'Lax',
+    'AUTH_COOKIE_SAMESITE': 'None',  # Required for cross-site cookies (Vercel -> Render)
 }
 
 TEMPLATES = [
