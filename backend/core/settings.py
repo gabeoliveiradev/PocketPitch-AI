@@ -68,10 +68,10 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_SECURE': True,  # Required for SameSite=None
+    'AUTH_COOKIE_SECURE': os.environ.get('COOKIE_SECURE', '1') == '1',
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_SAMESITE': 'None',  # Required for cross-site cookies (Vercel -> Render)
+    'AUTH_COOKIE_SAMESITE': 'Lax',  # Safe default; works with Next.js proxy
 }
 
 TEMPLATES = [

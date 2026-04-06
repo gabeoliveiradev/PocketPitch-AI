@@ -49,6 +49,7 @@ class LoginView(APIView):
                 key=settings.SIMPLE_JWT['AUTH_COOKIE'],
                 value=tokens["access"],
                 expires=settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'],
+                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
                 secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
                 httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
                 samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
@@ -57,6 +58,7 @@ class LoginView(APIView):
                 key=settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'],
                 value=tokens["refresh"],
                 expires=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
+                path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
                 secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
                 httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
                 samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
@@ -70,8 +72,16 @@ class LogoutView(APIView):
 
     def post(self, request):
         response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-        response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
-        response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])
+        response.delete_cookie(
+            settings.SIMPLE_JWT['AUTH_COOKIE'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+        )
+        response.delete_cookie(
+            settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+        )
         return response
 
 class UserProfileView(APIView):
