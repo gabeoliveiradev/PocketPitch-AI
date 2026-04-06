@@ -9,6 +9,12 @@
 
 <h1 align="center">🎯 PocketPitch AI</h1>
 
+## 🌐 URLs de Acesso
+
+- **Frontend (Vercel):** [https://pocket-pitch-ai.vercel.app](https://pocket-pitch-ai.vercel.app)
+- **Backend (Render):** [https://pocketpitch-backend.onrender.com](https://pocketpitch-backend.onrender.com)
+- **Banco de Dados (Neon):** [PostgreSQL Online (Neon.tech)](https://neon.tech/)
+
 <p align="center">
   <strong>Um co-piloto de vendas com inteligência artificial, direto no seu bolso.</strong><br/>
   Respostas em tempo real via streaming, pitches instantâneos e dicas de negociação — tudo alimentado pelo Google Gemini 2.5 Flash.
