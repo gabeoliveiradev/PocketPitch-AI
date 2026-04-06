@@ -8,10 +8,14 @@ import json
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
 from google import genai
+from google.genai.types import Content, Part, GenerateContentConfig
 from .models import Conversation, Message
 from .serializers import RegisterSerializer, UserSerializer, ConversationSerializer
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+
+# Limite de mensagens de histórico para controlar custos de tokens
+MAX_HISTORY_MESSAGES = 20
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -112,19 +116,41 @@ class ChatCompletionView(APIView):
             conversation = Conversation.objects.create(user=request.user, title=title)
             
         # Save user message
-        Message.objects.create(conversation=conversation, role='user', content=user_message)
+        user_msg_instance = Message.objects.create(conversation=conversation, role='user', content=user_message)
 
         try:
             client = genai.Client(api_key=api_key)
             system_prompt = "Você é um assistente especialista para vendedores chamado PocketPitch AI. Seja prático, rápido e focado em vendas."
-            full_prompt = f"{system_prompt}\n\nVendedor: {user_message}\nIA:"
+
+            # Build multi-turn conversation history from database
+            history_messages = (
+                Message.objects
+                .filter(conversation=conversation)
+                .exclude(id=user_msg_instance.id)
+                .order_by('timestamp')[:MAX_HISTORY_MESSAGES]
+            )
+
+            contents = []
+            for msg in history_messages:
+                role = 'user' if msg.role == 'user' else 'model'
+                contents.append(
+                    Content(role=role, parts=[Part.from_text(text=msg.content)])
+                )
+
+            # Append current user message
+            contents.append(
+                Content(role='user', parts=[Part.from_text(text=user_message)])
+            )
             
             # Start generator logic for SSE
             def event_stream():
                 try:
                     response = client.models.generate_content_stream(
                         model='gemini-2.5-flash',
-                        contents=full_prompt,
+                        contents=contents,
+                        config=GenerateContentConfig(
+                            system_instruction=system_prompt,
+                        ),
                     )
                     full_ai_content = ""
                     for chunk in response:
