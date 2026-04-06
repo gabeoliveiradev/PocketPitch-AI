@@ -4,13 +4,16 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.16.*.*"],
+  trailingSlash: true, // Crucial for Django compatibility (prevents POST -> GET redirects)
 
-  // Proxy /api/* through the frontend domain so cookies are same-site.
-  // This fixes Safari ITP blocking cross-origin cookies (Vercel → Render).
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
+        source: "/api/:path*/", // Match with trailing slash
+        destination: `${backendUrl}/api/:path*/`,
+      },
+      {
+        source: "/api/:path*", // Match without trailing slash as fallback
         destination: `${backendUrl}/api/:path*`,
       },
     ];
