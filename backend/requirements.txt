@@ -5,3 +5,6 @@ google-genai
 django-cors-headers
 python-dotenv
 djangorestframework-simplejwt
+gunicorn
+whitenoise
+dj-database-url
