@@ -27,17 +27,43 @@ export const QUICK_ACTIONS = [
 
 /**
  * Wrapper around fetch that always includes credentials and the API base URL.
+ * Handles common errors like parsing JSON failures from HTML error pages.
  */
 export async function apiFetch(
   path: string,
   options: RequestInit = {},
-): Promise<Response> {
-  return fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+): Promise<{ ok: boolean; data: any; status: number }> {
+  try {
+    const url = `${API_URL}${path}`;
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      // When proxied, relative requests are same-origin. 
+      // Defaults to 'same-origin' if not set, which is safer for Safari.
+      credentials: options.credentials || 'include',
+    });
+
+    const contentType = res.headers.get('content-type');
+    let data;
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      // Handle cases where the server returns HTML errors (502, 504, 403, etc.)
+      const text = await res.text();
+      data = { error: `Resposta inesperada: ${res.status} ${res.statusText}` };
+      console.warn('Backend returned non-JSON response:', text.slice(0, 500));
+    }
+
+    return { ok: res.ok, data, status: res.status };
+  } catch (err) {
+    console.error('apiFetch error:', err);
+    return { 
+      ok: false, 
+      data: { error: 'O navegador bloqueou a conexão ou o servidor está offline.' },
+      status: 0 
+    };
+  }
 }

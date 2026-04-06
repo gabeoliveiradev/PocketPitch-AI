@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react'; // added useCallback as a best practice
 import { User } from '../lib/types';
-import { API_URL } from '../lib/api';
+import { apiFetch } from '../lib/api'; // using centralized fetch
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -11,61 +11,44 @@ export function useAuth() {
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const checkAuth = async (): Promise<User | null> => {
-    try {
-      const res = await fetch(`${API_URL}/api/me/`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data);
-        return data;
-      } else {
-        setUser(null);
-        return null;
-      }
-    } catch {
-      setUser(null);
-      return null;
+  const checkAuth = useCallback(async (): Promise<User | null> => {
+    const { ok, data } = await apiFetch('/api/me/');
+    if (ok) {
+      setUser(data);
+      return data;
     }
-  };
+    setUser(null);
+    return null;
+  }, []);
 
   const handleAuth = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault();
     setAuthError('');
     const endpoint = isLoginView ? '/api/login/' : '/api/register/';
 
-    try {
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: authUsername, password: authPassword }),
-        credentials: 'include',
-      });
+    const { ok, data } = await apiFetch(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ username: authUsername, password: authPassword }),
+    });
 
-      if (res.ok) {
-        if (!isLoginView) {
-          setIsLoginView(true);
-          setAuthError('Conta criada! Por favor, faça login.');
-          return false;
-        }
-        const data = await res.json();
-        setUser(data.user);
-        return true;
-      } else {
-        const err = await res.json();
-        setAuthError(err.error || 'Erro na autenticação');
+    if (ok) {
+      if (!isLoginView) {
+        setIsLoginView(true);
+        setAuthError('Conta criada! Por favor, faça login.');
         return false;
       }
-    } catch {
-      setAuthError('Erro ao conectar ao servidor');
+      setUser(data.user);
+      return true;
+    } else {
+      setAuthError(data.error || 'Erro na autenticação');
       return false;
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/api/logout/`, {
+      await apiFetch('/api/logout/', {
         method: 'POST',
-        credentials: 'include',
       });
     } catch (e) {
       console.error(e);

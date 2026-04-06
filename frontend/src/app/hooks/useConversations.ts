@@ -1,8 +1,6 @@
-'use client';
-
 import { useState } from 'react';
 import { Conversation, Message } from '../lib/types';
-import { API_URL } from '../lib/api';
+import { apiFetch } from '../lib/api';
 
 const WELCOME_MESSAGE: Message = {
   id: 'welcome',
@@ -24,33 +22,19 @@ export function useConversations() {
   const [convToDelete, setConvToDelete] = useState<number | null>(null);
 
   const loadConversations = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/conversations/`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data);
-        return data as Conversation[];
-      }
-    } catch (e) {
-      console.error(e);
+    const { ok, data } = await apiFetch('/api/conversations/');
+    if (ok) {
+      setConversations(data);
+      return data as Conversation[];
     }
     return [];
   };
 
   const loadConversationDetails = async (id: number) => {
-    try {
-      const res = await fetch(`${API_URL}/api/conversations/${id}/`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentConvId(data.id);
-        setMessages(data.messages || []);
-      }
-    } catch (e) {
-      console.error(e);
+    const { ok, data } = await apiFetch(`/api/conversations/${id}/`);
+    if (ok) {
+      setCurrentConvId(data.id);
+      setMessages(data.messages || []);
     }
   };
 
@@ -61,23 +45,17 @@ export function useConversations() {
 
   const confirmDelete = async () => {
     if (convToDelete === null) return;
-    try {
-      const res = await fetch(
-        `${API_URL}/api/conversations/${convToDelete}/`,
-        { method: 'DELETE', credentials: 'include' },
-      );
-      if (res.ok || res.status === 204) {
-        setConversations((prev) => prev.filter((c) => c.id !== convToDelete));
-        if (currentConvId === convToDelete) {
-          startNewChat();
-        }
+    const { ok } = await apiFetch(`/api/conversations/${convToDelete}/`, {
+      method: 'DELETE',
+    });
+    if (ok) {
+      setConversations((prev: Conversation[]) => prev.filter((c: Conversation) => c.id !== convToDelete));
+      if (currentConvId === convToDelete) {
+        startNewChat();
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsDeleteModalOpen(false);
-      setConvToDelete(null);
     }
+    setIsDeleteModalOpen(false);
+    setConvToDelete(null);
   };
 
   const handleRenameSubmit = async (id: number) => {
@@ -85,23 +63,16 @@ export function useConversations() {
       setRenamingId(null);
       return;
     }
-    try {
-      const res = await fetch(`${API_URL}/api/conversations/${id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: renamingTitle }),
-        credentials: 'include',
-      });
-      if (res.ok) {
-        setConversations((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, title: renamingTitle } : c)),
-        );
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRenamingId(null);
+    const { ok } = await apiFetch(`/api/conversations/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: renamingTitle }),
+    });
+    if (ok) {
+      setConversations((prev: Conversation[]) =>
+        prev.map((c: Conversation) => (c.id === id ? { ...c, title: renamingTitle } : c)),
+      );
     }
+    setRenamingId(null);
   };
 
   const resetConversations = () => {
