@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/status-em%20desenvolvimento-blueviolet?style=for-the-badge" alt="Status" />
+  <img src="https://img.shields.io/badge/STATUS-Concluido-y" alt="Status" />
   <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=nextdotjs" alt="Next.js" />
   <img src="https://img.shields.io/badge/Django-4.2-092E20?style=for-the-badge&logo=django" alt="Django" />
   <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
@@ -329,10 +329,4 @@ Desenvolvido por **Gabriel Oliveira**.
   <a href="https://github.com/gabeoliveiradev">
     <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
   </a>
-</p>
-
----
-
-<p align="center">
-  Feito com 💜 e muita IA
 </p>
